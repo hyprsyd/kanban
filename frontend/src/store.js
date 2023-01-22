@@ -1,4 +1,4 @@
-import { ref} from "vue";
+import {ref} from "vue";
 import {defineStore} from "pinia";
 
 export const kstore = defineStore("store", () => {
@@ -11,6 +11,8 @@ export const kstore = defineStore("store", () => {
     const ldsocket = new WebSocket('ws://localhost:8000/dlists');
     const cdsocket = new WebSocket('ws://localhost:8000/dcards');
 
+
+
     const deleteList = (l) => {
         lists.value=lists.value.filter(list => l.id!==list.id)
         cards.value=cards.value.filter(card => l.id!==card.listId)
@@ -20,8 +22,8 @@ export const kstore = defineStore("store", () => {
         cards.value=cards.value.filter(card => c!==card.id)
         cdsocket.send(JSON.stringify(c))
     };
-    
- 
+
+
     return {
         lsocket,
         csocket,

@@ -35,7 +35,6 @@ export default {
         title: String,
         listId: {
             type: Number,
-            required: true
         }
     },
     setup(props) {
@@ -43,7 +42,15 @@ export default {
       const newCardDescription = ref('')
 
       const store = kstore()
-
+      store.csocket.onmessage = (event) => {
+        let x=JSON.parse(event.data);
+        for (let i = 0; i <x.length ; i++) {
+          store.cards.push(x[i])
+          if (x[i].id>store.cidCounter){
+            store.cidCounter=x[i].id+3
+          }
+        }
+      }
       function addCard() {
         if (newCardTitle.value) {
           let x=({id: store.cidCounter++, title: newCardTitle.value,

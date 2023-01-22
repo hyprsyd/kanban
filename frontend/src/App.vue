@@ -10,6 +10,9 @@
         <list id="list" v-for="list in store.lists" :key="list.id" :listId="list.id" :list="list" @deleteList="store.deleteList" @editList="store.editList(list.id)"/>
       </div>
     </div>
+  <nav style="position: sticky;">
+    <button class="btn btn-dark" action="/logout" method="GET" >Log out</button>
+  </nav>
 </template>
 <script>
 import {ref} from 'vue'
@@ -23,8 +26,15 @@ export default {
     setup() {
         const store=kstore()
         const newListTitle = ref('')
-
-
+        store.lsocket.onmessage = (event) => {
+         let x=JSON.parse(event.data);
+          for (let i = 0; i <x.length ; i++) {
+            store.lists.push(x[i])
+            if (x[i].id>store.lidCounter){
+              store.lidCounter=x[i].id+3
+            }
+          }
+        }
       function addList() {
             if(newListTitle.value) {
               let x = {id: store.lidCounter++, title: newListTitle.value}
