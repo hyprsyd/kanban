@@ -5,8 +5,6 @@ from flask import redirect, url_for, flash, json
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_required
 from flask_login import login_user, logout_user, current_user
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 from werkzeug.security import generate_password_hash, check_password_hash
 
 
@@ -18,7 +16,6 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + \
     os.path.join(basedir, 'app.db')
 db = SQLAlchemy(app)
-
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.environ['SEC_KEY']
 app.config['SOCK_SERVER_OPTIONS'] = {'ping_interval': 25}
@@ -40,46 +37,34 @@ class User(db.Model, UserMixin):
     def __repr__(self):
         return '<User {}>'.format(self.username)
 
-    def get_id(self):
-        return self.id
-
 
 class List(db.Model):
     id = db.Column(db.Integer, primary_key=True)
+    list_id = db.Column(db.Integer, unique=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     name = db.Column(db.String(64))
     cards = db.relationship('Card', backref='list', lazy='dynamic')
 
     def __repr__(self):
-        return '{}'.format({'title': self.name, 'id': self.id})
+        return '{"title": %r, "id": %r }' % (self.name, self.list_id)
 
 
 class Card(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    card_id = db.Column(db.Integer, unique=False)
     list_id = db.Column(db.Integer, db.ForeignKey('list.id'))
     title = db.Column(db.String(64))
     description = db.Column(db.String(256))
 
     def __repr__(self):
-        return '{}'.format({'title': self.title, 'id': self.id,
-                            'listId': self.list_id,
-                            'description': self.description})
+        return '{"title": %r, "id": %r ,"listId": %r,"description": %r}' % (
+            self.title, self.card_id, self.list_id, self.description)
 
 
 @app.before_first_request
 def create_tables():
     db.create_all()
-
-
-def get_db():
-    engine = create_engine('sqlite:///app.db')
-    SessionLocal = sessionmaker(bind=engine)
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 # Routes
@@ -135,8 +120,10 @@ def login():
         if check_password_hash(user.password_hash, password):
             # Login the user
             login_user(user)
+
         # Return a success response
             return render_template('index.html')
+            # return redirect('http://localhost:5173')
         return "Invalid password", 401
     else:
         # Return an error response
@@ -145,16 +132,8 @@ def login():
 
 
 @app.route('/logout')
-@login_required
 def logout():
-    # Remove the user's token from the database
-    current_user.auth_token = None
-    db.session.commit()
-
-    # Log out the user
     logout_user()
-
-    # Return a success response
     return make_response(redirect(url_for('login')))
 
 
@@ -173,28 +152,31 @@ def dlists(ws):
     while True:
         data = ws.receive()
         db.session.execute(db.delete(Card).where(Card.list_id == int(data)))
-        print(db.session.get(List, int(data)))
-        db.session.delete(db.session.get(List, int(data)))
         db.session.commit()
-        ws.send(data)
+        db.session.execute(db.delete(List).where(List.list_id == int(data)))
+        db.session.commit()
 
 
 @sock.route('/dcards')
 def dcards(ws):
     while True:
         data = ws.receive()
-        db.session.delete(db.session.get(Card, int(data)))
+        db.session.execute(db.delete(Card).where(Card.card_id == int(data)))
+        db.session.commit()
         print(data)
-        ws.send(data)
 
 
 @sock.route('/lists')
 def alists(ws):
+    ll = str(db.session.execute(db.select(List).where(
+        List.user_id == current_user.id)).scalars().all())
+    ll = ll.replace("'", '"')
+    ws.send(ll)
     while True:
         data = ws.receive()
         x = json.loads(data)
         print(data, x)
-        list = List(id=x['id'], name=x['title'], user_id=current_user.id)
+        list = List(list_id=x['id'], name=x['title'], user_id=current_user.id)
         db.session.add(list)
         db.session.commit()
         ws.send(data)
@@ -202,19 +184,16 @@ def alists(ws):
 
 @sock.route('/cards')
 def acards(ws):
+    cc = str(db.session.execute(db.select(Card).where(
+        Card.user_id == current_user.id)).scalars().all())
+    cc = cc.replace("'", '"')
+    ws.send(cc)
     while True:
         data = ws.receive()
         x = json.loads(data)
-        card = Card(id=x['id'], title=x['title'],
+        card = Card(card_id=x['id'], title=x['title'],
                     user_id=current_user.id, list_id=x['listId'],
                     description=x['description'])
         db.session.add(card)
         db.session.commit()
         print(data)
-        ws.send(data)
-
-
-@app.route('/protected')
-@login_required
-def protected():
-    return "You are logged in"

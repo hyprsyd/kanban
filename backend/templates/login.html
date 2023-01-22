@@ -58,6 +58,17 @@
       text-align: center;
       text-decoration: none;
     }
+    #button{
+      margin-top:10px;
+      width: 100%;
+      padding: 15px;
+      border: 0;
+      border-radius: 5px;
+      background-color: #FF0080;
+      color: #FFFFFF;
+      font-size: 14px;
+      cursor: pointer;
+    }
   </style>
 </head>
 
@@ -69,6 +80,7 @@
       <input type="password" placeholder="Password" name="password" required>
       <input type="submit" value="Sign in">
     </form>
+    <a href="{{ url_for('signup') }}"><button id="button" class="footer btn btn-dark">Sign up</button></a>
   </div>
 </body>
 
