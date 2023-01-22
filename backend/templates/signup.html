@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Signup</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Iosevka:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    /* Add your styles here */
+    body {
+      margin-top: 10em;
+      background-color: #0A0A0A;
+      font-family: 'Iosevka', sans-serif;
+    }
+
+    .signup-box {
+      width: 400px;
+      padding: 40px;
+      background-color: #1C1C1C;
+      border: 1px solid #303030;
+      border-radius: 5px;
+      margin: 0 auto;
+    }
+
+    .signup-box h1 {
+      margin: 0 0 20px 0;
+      text-align: center;
+      color: #FFFFFF;
+    }
+
+    .signup-box input[type="text"],
+    .signup-box input[type="password"],
+    .signup-box input[type="email"] {
+      width: 100%;
+      padding: 15px;
+      border: 1px solid #303030;
+      border-radius: 5px;
+      margin-bottom: 21px;
+      font-size: 14px;
+      color: #FFFFFF;
+      background-color: #1C1C1C;
+    }
+
+    .signup-box input[type="submit"] {
+      width: 100%;
+      padding: 15px;
+      border: 0;
+      border-radius: 5px;
+      background-color: #FF0080;
+      color: #FFFFFF;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .signup-box a {
+      display: block;
+      color: #9f9f9f;
+      font-size: 14px;
+      text-align: center;
+      text-decoration: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="signup-box">
+    <h1>Signup</h1>
+    <form action="/signup" method="post">
+      <input type="text" placeholder="Username" name="username" required>
+      <input type="password" placeholder="Password" name="password" required>
+      <input type="password" placeholder="Confirm Password" required>
+      <input type="submit" value="Sign up">
+    </form>
+  </div>
+</body>
+
+</html>
