@@ -3,7 +3,7 @@ from flask_sock import Sock
 from flask import Flask, render_template, make_response, request
 from flask import redirect, url_for, flash, json
 from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager, UserMixin, login_required
+from flask_login import LoginManager, UserMixin
 from flask_login import login_user, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -31,8 +31,6 @@ class User(db.Model, UserMixin):
     username = db.Column(db.String(64), index=True, unique=True)
     password_hash = db.Column(db.String(128))
     is_active = db.Column(db.Boolean, default=True)
-    lists = db.relationship('List', backref='user', lazy='dynamic')
-    cards = db.relationship('Card', backref='user', lazy='dynamic')
 
     def __repr__(self):
         return '<User {}>'.format(self.username)
@@ -43,7 +41,6 @@ class List(db.Model):
     list_id = db.Column(db.Integer, unique=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     name = db.Column(db.String(64))
-    cards = db.relationship('Card', backref='list', lazy='dynamic')
 
     def __repr__(self):
         return '{"title": %r, "id": %r }' % (self.name, self.list_id)
@@ -122,8 +119,8 @@ def login():
             login_user(user)
 
         # Return a success response
-            return render_template('index.html')
-            # return redirect('http://localhost:5173')
+            # return render_template('index.html')
+            return redirect('http://localhost:5173')
         return "Invalid password", 401
     else:
         # Return an error response
@@ -145,6 +142,35 @@ def load_user(user_id):
     # If the user exists, return it
     if user is not None:
         return user
+
+
+@sock.route('/elists')
+def elists(ws):
+    while True:
+        data = json.loads(ws.receive())
+        print(data, type(data))
+        db.session.execute(db.delete(List).where(
+            List.user_id == current_user.id).where(List.list_id == data['id']))
+        db.session.commit()
+        list = List(list_id=data['id'],
+                    name=data['title'], user_id=current_user.id)
+        db.session.add(list)
+        db.session.commit()
+
+
+@sock.route('/ecards')
+def ecards(ws):
+    while True:
+        data = json.loads(ws.receive())
+        print(data, type(data))
+        db.session.execute(db.delete(Card).where(
+            Card.user_id == current_user.id).where(Card.card_id == data['id']))
+        db.session.commit()
+        card = Card(card_id=data['id'], title=data['title'],
+                    user_id=current_user.id, list_id=data['listId'],
+                    description=data['description'])
+        db.session.add(card)
+        db.session.commit()
 
 
 @sock.route('/dlists')
@@ -179,7 +205,6 @@ def alists(ws):
         list = List(list_id=x['id'], name=x['title'], user_id=current_user.id)
         db.session.add(list)
         db.session.commit()
-        ws.send(data)
 
 
 @sock.route('/cards')

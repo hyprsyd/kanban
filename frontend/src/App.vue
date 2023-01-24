@@ -10,9 +10,9 @@
         <list id="list" v-for="list in store.lists" :key="list.id" :listId="list.id" :list="list" @deleteList="store.deleteList" @editList="store.editList(list.id)"/>
       </div>
     </div>
-  <nav style="position: sticky;">
-    <button class="btn btn-dark" action="/logout" method="GET" >Log out</button>
-  </nav>
+  <a style="nav-down:initial" href="http://localhost:8000/logout">
+    <button class="btn btn-dark">Log out</button>
+  </a>
 </template>
 <script>
 import {ref} from 'vue'
@@ -23,6 +23,7 @@ export default {
     components: {
         List
     },
+    delimiters: ['{%', '%}'],
     setup() {
         const store=kstore()
         const newListTitle = ref('')

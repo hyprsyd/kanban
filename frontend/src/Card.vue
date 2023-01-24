@@ -35,12 +35,11 @@ export default {name: 'Card', props: {
       type: String,
       required: true
     }
-  }, setup: function (props) {
+  },
+  setup() {
     const newCardTitle = ref ('')
     const newCardDescription = ref('')
     let idCounter = 3
-
-
     const store=kstore();
     const cardsByList = list.cardsByList
 
@@ -66,7 +65,7 @@ export default {name: 'Card', props: {
       if (newDescription) {
         card.description = newDescription;
       }
-      store.csocket.send(JSON.stringify(card))
+      store.cesocket.send(JSON.stringify(card))
     }
 
 

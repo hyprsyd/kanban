@@ -7,6 +7,8 @@ export const kstore = defineStore("store", () => {
     const cards = ref([]);
     const lists = ref([]);
     const lsocket = new WebSocket('ws://localhost:8000/lists');
+    const lesocket = new WebSocket('ws://localhost:8000/elists');
+    const cesocket = new WebSocket('ws://localhost:8000/ecards');
     const csocket = new WebSocket('ws://localhost:8000/cards');
     const ldsocket = new WebSocket('ws://localhost:8000/dlists');
     const cdsocket = new WebSocket('ws://localhost:8000/dcards');
@@ -26,6 +28,8 @@ export const kstore = defineStore("store", () => {
 
     return {
         lsocket,
+        lesocket,
+        cesocket,
         csocket,
         deleteCard,
         cards,

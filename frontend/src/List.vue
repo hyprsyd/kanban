@@ -68,7 +68,7 @@ export default {
         if (newTitle) {
           list.title = newTitle;
         }
-        store.lsocket.send(JSON.stringify(list))
+        store.lesocket.send(JSON.stringify(list))
       }
 
         const cardsByList = computed(() => {
