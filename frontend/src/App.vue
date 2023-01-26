@@ -10,7 +10,7 @@
         <list id="list" v-for="list in store.lists" :key="list.id" :listId="list.id" :list="list" @deleteList="store.deleteList" @editList="store.editList(list.id)"/>
       </div>
     </div>
-  <a style="nav-down:initial" href="http://localhost:8000/logout">
+  <a style="nav-down:initial" href="{{url_for('logout')}}">
     <button class="btn btn-dark">Log out</button>
   </a>
 </template>
@@ -23,7 +23,7 @@ export default {
     components: {
         List
     },
-    delimiters: ['{%', '%}'],
+    delimiters: ['[[',']]'],
     setup() {
         const store=kstore()
         const newListTitle = ref('')
@@ -31,8 +31,8 @@ export default {
          let x=JSON.parse(event.data);
           for (let i = 0; i <x.length ; i++) {
             store.lists.push(x[i])
-            if (x[i].id>store.lidCounter){
-              store.lidCounter=x[i].id+3
+            if (x[i].id>=store.lidCounter){
+              store.lidCounter=x[i].id+5
             }
           }
         }

@@ -14,7 +14,6 @@ export const kstore = defineStore("store", () => {
     const cdsocket = new WebSocket('ws://localhost:8000/dcards');
 
 
-
     const deleteList = (l) => {
         lists.value=lists.value.filter(list => l.id!==list.id)
         cards.value=cards.value.filter(card => l.id!==card.listId)

@@ -39,7 +39,7 @@ class User(db.Model, UserMixin):
 class List(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     list_id = db.Column(db.Integer, unique=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    user_id = db.Column(db.Integer)
     name = db.Column(db.String(64))
 
     def __repr__(self):
@@ -48,15 +48,16 @@ class List(db.Model):
 
 class Card(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    user_id = db.Column(db.Integer)
     card_id = db.Column(db.Integer, unique=False)
     list_id = db.Column(db.Integer, db.ForeignKey('list.id'))
     title = db.Column(db.String(64))
     description = db.Column(db.String(256))
+    complete = db.Column(db.Integer, unique=False)
 
     def __repr__(self):
-        return '{"title": %r, "id": %r ,"listId": %r,"description": %r}' % (
-            self.title, self.card_id, self.list_id, self.description)
+        return '{"title": %r, "id": %r ,"listId": %r,"description": %r,"complete": %r}' % (
+            self.title, self.card_id, self.list_id, self.description, self.complete)
 
 
 @app.before_first_request
@@ -119,8 +120,8 @@ def login():
             login_user(user)
 
         # Return a success response
-            # return render_template('index.html')
-            return redirect('http://localhost:5173')
+            return render_template('index.html')
+            # return redirect('http://localhost:5173')
         return "Invalid password", 401
     else:
         # Return an error response
@@ -162,13 +163,14 @@ def elists(ws):
 def ecards(ws):
     while True:
         data = json.loads(ws.receive())
-        print(data, type(data))
+        # print(data, type(data))
         db.session.execute(db.delete(Card).where(
             Card.user_id == current_user.id).where(Card.card_id == data['id']))
         db.session.commit()
         card = Card(card_id=data['id'], title=data['title'],
                     user_id=current_user.id, list_id=data['listId'],
-                    description=data['description'])
+                    description=data['description'], complete=data['complete'])
+        print(card)
         db.session.add(card)
         db.session.commit()
 
@@ -218,7 +220,7 @@ def acards(ws):
         x = json.loads(data)
         card = Card(card_id=x['id'], title=x['title'],
                     user_id=current_user.id, list_id=x['listId'],
-                    description=x['description'])
+                    description=x['description'], complete=x['complete'])
         db.session.add(card)
+        print(card)
         db.session.commit()
-        print(data)
