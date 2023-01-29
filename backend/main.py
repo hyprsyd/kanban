@@ -1,15 +1,27 @@
 import os
+import redis
 from flask_sock import Sock
 from flask import Flask, render_template, make_response, request
-from flask import redirect, url_for, flash, json
+from flask import redirect, url_for, flash, json, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin
 from flask_login import login_user, logout_user, current_user
+from flask_caching import Cache
 from werkzeug.security import generate_password_hash, check_password_hash
-
+r = redis.Redis()
+r.flushdb()
+config = {
+    "DEBUG": True,
+    "CACHE_TYPE": "RedisCache",
+    "CACHE_REDIS_HOST": "localhost",
+    "CACHE_REDIS_PORT": 6379,
+    "CACHE_REDIS_URL": "redis://localhost:6379"
+}
 
 app = Flask(__name__)
 sock = Sock(app)
+app.config.from_mapping(config)
+cache = Cache(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -120,8 +132,8 @@ def login():
             login_user(user)
 
         # Return a success response
-            return render_template('index.html')
-            # return redirect('http://localhost:5173')
+            # return render_template('index.html')
+            return redirect('http://localhost:5173')
         return "Invalid password", 401
     else:
         # Return an error response
@@ -160,6 +172,7 @@ def elists(ws):
 
 
 @sock.route('/ecards')
+@cache.cached(timeout=50)
 def ecards(ws):
     while True:
         data = json.loads(ws.receive())
@@ -173,6 +186,8 @@ def ecards(ws):
         print(card)
         db.session.add(card)
         db.session.commit()
+        cache.set(f"{card.card_id}", data)
+        print(cache.get(f"{card.card_id}"))
 
 
 @sock.route('/dlists')
@@ -194,16 +209,36 @@ def dcards(ws):
         print(data)
 
 
+def list_json(List):
+    return {
+        "id": List.list_id,
+        "title": List.name
+    }
+
+
+def card_json(Card):
+    return {
+        "id": Card.card_id,
+        "title": Card.title,
+        "listId": Card.list_id,
+        "discription": Card.description,
+        "complete": Card.complete
+    }
+
+
 @sock.route('/lists')
 def alists(ws):
-    ll = str(db.session.execute(db.select(List).where(
-        List.user_id == current_user.id)).scalars().all())
-    ll = ll.replace("'", '"')
-    ws.send(ll)
+    ll = db.session.execute(db.select(List).where(
+        List.user_id == current_user.id)).scalars().all()
+    r.json().set('Lists', '$', [list_json(i) for i in ll])
+    doc = r.json().get('Lists')
+    print(doc)
+    ws.send(str(doc).replace("'", '"'))
     while True:
         data = ws.receive()
         x = json.loads(data)
-        print(data, x)
+        r.json().arrappend('Lists', '$', x)
+        print(type(data), x)
         list = List(list_id=x['id'], name=x['title'], user_id=current_user.id)
         db.session.add(list)
         db.session.commit()
@@ -211,13 +246,16 @@ def alists(ws):
 
 @sock.route('/cards')
 def acards(ws):
-    cc = str(db.session.execute(db.select(Card).where(
-        Card.user_id == current_user.id)).scalars().all())
-    cc = cc.replace("'", '"')
-    ws.send(cc)
+    cc = db.session.execute(db.select(Card).where(
+        Card.user_id == current_user.id)).scalars().all()
+    r.json().set('Cards', '$', [card_json(i) for i in cc])
+    doc = r.json().get('Cards')
+    print(doc)
+    ws.send(str(doc).replace("'", '"'))
     while True:
         data = ws.receive()
         x = json.loads(data)
+        r.json().arrappend('Cards', '$', x)
         card = Card(card_id=x['id'], title=x['title'],
                     user_id=current_user.id, list_id=x['listId'],
                     description=x['description'], complete=x['complete'])
