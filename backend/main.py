@@ -2,7 +2,7 @@ import os
 import redis
 from flask_sock import Sock
 from flask import Flask, render_template, make_response, request
-from flask import redirect, url_for, flash, json, jsonify
+from flask import redirect, url_for, flash, json
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin
 from flask_login import login_user, logout_user, current_user
