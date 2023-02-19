@@ -6,8 +6,8 @@ from flask import redirect, url_for, flash, json
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin
 from flask_login import login_user, logout_user, current_user
-from flask_caching import Cache
 from werkzeug.security import generate_password_hash, check_password_hash
+
 r = redis.Redis()
 r.flushdb()
 config = {
@@ -21,12 +21,11 @@ config = {
 app = Flask(__name__)
 sock = Sock(app)
 app.config.from_mapping(config)
-cache = Cache(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
 basedir = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + \
-    os.path.join(basedir, 'app.db')
+                                        os.path.join(basedir, 'app.db')
 db = SQLAlchemy(app)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.environ['SEC_KEY']
@@ -131,9 +130,8 @@ def login():
             # Login the user
             login_user(user)
 
-        # Return a success response
-            # return render_template('index.html')
-            return redirect('http://localhost:5173')
+            # Return a success response
+            return render_template('index.html')
         return "Invalid password", 401
     else:
         # Return an error response
@@ -143,6 +141,22 @@ def login():
 
 @app.route('/logout')
 def logout():
+    List.query.filter(List.user_id == current_user.id).delete()
+    Card.query.filter(Card.user_id == current_user.id).delete()
+    for i in (r.json().get('Lists')).values():
+        list = List(list_id=i['id'], name=i['title'], user_id=current_user.id)
+        db.session.add(list)
+        db.session.commit()
+    for i in (r.json().get('Cards')).values():
+        if db.select(List).where(List.list_id == i['listId']) is not None:
+            card = Card(user_id=current_user.id,
+                        card_id=i['id'],
+                        list_id=i['listId'],
+                        title=i['title'],
+                        description=i['description'],
+                        complete=i['complete'])
+            db.session.add(card)
+            db.session.commit()
     logout_user()
     return make_response(redirect(url_for('login')))
 
@@ -161,52 +175,30 @@ def load_user(user_id):
 def elists(ws):
     while True:
         data = json.loads(ws.receive())
-        print(data, type(data))
-        db.session.execute(db.delete(List).where(
-            List.user_id == current_user.id).where(List.list_id == data['id']))
-        db.session.commit()
-        list = List(list_id=data['id'],
-                    name=data['title'], user_id=current_user.id)
-        db.session.add(list)
-        db.session.commit()
+        r.json().delete('Lists', f"$.{int(data['id'])}")
+        r.json().set('Lists', f"$.{int(data['id'])}", data)
 
 
 @sock.route('/ecards')
-@cache.cached(timeout=50)
 def ecards(ws):
     while True:
         data = json.loads(ws.receive())
-        # print(data, type(data))
-        db.session.execute(db.delete(Card).where(
-            Card.user_id == current_user.id).where(Card.card_id == data['id']))
-        db.session.commit()
-        card = Card(card_id=data['id'], title=data['title'],
-                    user_id=current_user.id, list_id=data['listId'],
-                    description=data['description'], complete=data['complete'])
-        print(card)
-        db.session.add(card)
-        db.session.commit()
-        cache.set(f"{card.card_id}", data)
-        print(cache.get(f"{card.card_id}"))
+        r.json().delete('Cards', f"$.{int(data['id'])}")
+        r.json().set('Cards', f"$.{int(data['id'])}", data)
 
 
 @sock.route('/dlists')
 def dlists(ws):
     while True:
         data = ws.receive()
-        db.session.execute(db.delete(Card).where(Card.list_id == int(data)))
-        db.session.commit()
-        db.session.execute(db.delete(List).where(List.list_id == int(data)))
-        db.session.commit()
+        r.json().delete('Lists', f'$.{int(data)}')
 
 
 @sock.route('/dcards')
 def dcards(ws):
     while True:
         data = ws.receive()
-        db.session.execute(db.delete(Card).where(Card.card_id == int(data)))
-        db.session.commit()
-        print(data)
+        r.json().delete('Cards', f'$.{int(data)}')
 
 
 def list_json(List):
@@ -221,44 +213,42 @@ def card_json(Card):
         "id": Card.card_id,
         "title": Card.title,
         "listId": Card.list_id,
-        "discription": Card.description,
+        "description": Card.description,
         "complete": Card.complete
     }
+
+
+def empty_json():
+    return {}
 
 
 @sock.route('/lists')
 def alists(ws):
     ll = db.session.execute(db.select(List).where(
         List.user_id == current_user.id)).scalars().all()
-    r.json().set('Lists', '$', [list_json(i) for i in ll])
+    r.json().set('Lists', '$', empty_json())
+    for i in ll:
+        r.json().set('Lists', f'$.{i.list_id}', list_json(i))
     doc = r.json().get('Lists')
-    print(doc)
+    doc = ([i for i in (doc.values())])
     ws.send(str(doc).replace("'", '"'))
     while True:
         data = ws.receive()
         x = json.loads(data)
-        r.json().arrappend('Lists', '$', x)
-        print(type(data), x)
-        list = List(list_id=x['id'], name=x['title'], user_id=current_user.id)
-        db.session.add(list)
-        db.session.commit()
+        r.json().set('Lists', f"$.{x['id']}", x)
 
 
 @sock.route('/cards')
 def acards(ws):
     cc = db.session.execute(db.select(Card).where(
         Card.user_id == current_user.id)).scalars().all()
-    r.json().set('Cards', '$', [card_json(i) for i in cc])
+    r.json().set('Cards', '$', empty_json())
+    for i in cc:
+        r.json().set('Cards', f'$.{i.card_id}', card_json(i))
     doc = r.json().get('Cards')
-    print(doc)
+    doc = ([i for i in (doc.values())])
     ws.send(str(doc).replace("'", '"'))
     while True:
         data = ws.receive()
         x = json.loads(data)
-        r.json().arrappend('Cards', '$', x)
-        card = Card(card_id=x['id'], title=x['title'],
-                    user_id=current_user.id, list_id=x['listId'],
-                    description=x['description'], complete=x['complete'])
-        db.session.add(card)
-        print(card)
-        db.session.commit()
+        r.json().set('Cards', f"$.{x['id']}", x)

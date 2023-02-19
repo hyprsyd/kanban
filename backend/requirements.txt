@@ -1,4 +1,6 @@
-flask
+flask~=2.2.2
 flask-sqlalchemy
 flask-sock
 flask-login
+redis~=4.4.2
+Werkzeug~=2.2.2

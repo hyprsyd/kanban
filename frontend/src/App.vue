@@ -10,8 +10,8 @@
         <list id="list" v-for="list in store.lists" :key="list.id" :listId="list.id" :list="list" @deleteList="store.deleteList" @editList="store.editList(list.id)"/>
       </div>
     </div>
-  <a style="nav-down:initial" href="{{url_for('logout')}}">
-    <button class="btn btn-dark">Log out</button>
+  <a style="nav-down:initial" href="{{url_for(logout)}}">
+    <button class="btn btn-dark">Log out & Save changes</button>
   </a>
 </template>
 <script>
